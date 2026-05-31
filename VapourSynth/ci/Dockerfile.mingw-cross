@@ -1,0 +1,25 @@
+FROM ubuntu:24.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    binutils-mingw-w64-x86-64 \
+    ca-certificates \
+    cmake \
+    g++ \
+    g++-mingw-w64-x86-64 \
+    gcc \
+    gcc-mingw-w64-x86-64 \
+    git \
+    make \
+    meson \
+    nasm \
+    ninja-build \
+    pkg-config \
+    python3 \
+ && rm -rf /var/lib/apt/lists/*
+
+RUN update-alternatives --set x86_64-w64-mingw32-gcc /usr/bin/x86_64-w64-mingw32-gcc-posix \
+ && update-alternatives --set x86_64-w64-mingw32-g++ /usr/bin/x86_64-w64-mingw32-g++-posix
+
+WORKDIR /work/L-SMASH-Works/VapourSynth

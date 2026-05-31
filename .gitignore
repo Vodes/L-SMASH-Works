@@ -119,3 +119,6 @@ CPackSourceConfig.cmake
 build/
 libxxhash.pc
 /build_vs_test
+dist/
+/VapourSynth/.cross-build-*
+/VapourSynth/.pkg-prefix-*

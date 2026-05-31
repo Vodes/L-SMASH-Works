@@ -1,0 +1,55 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 22159b2..7555f62 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -18,6 +18,7 @@ else()
+     option(BUILD_SHARED_LIBS "Build the shared library" ON)
+     option(BUILD_STATIC_LIBS "Build the static library" ON)
+ endif()
++option(BUILD_TOOLS "Build the obuparse tools" ON)
+ 
+ if(NOT BUILD_SHARED_LIBS AND NOT BUILD_STATIC_LIBS)
+     message(FATAL_ERROR "You must choose to build at least one library type.")
+@@ -57,15 +58,17 @@ if(BUILD_STATIC_LIBS)
+ endif()
+ 
+ # --- Tool Target (obudump) ---
+-add_executable(obudump
+-    tools/obudump.c
+-    tools/json.c
+-)
+-target_include_directories(obudump PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+-if(TARGET OBUParse::shared)
+-    target_link_libraries(obudump PRIVATE OBUParse::shared)
+-else()
+-    target_link_libraries(obudump PRIVATE OBUParse::static)
++if(BUILD_TOOLS)
++    add_executable(obudump
++        tools/obudump.c
++        tools/json.c
++    )
++    target_include_directories(obudump PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
++    if(TARGET OBUParse::shared)
++        target_link_libraries(obudump PRIVATE OBUParse::shared)
++    else()
++        target_link_libraries(obudump PRIVATE OBUParse::static)
++    endif()
+ endif()
+ 
+ # --- RPATH Handling for obudump tool ---
+@@ -100,8 +103,13 @@ if(TARGET obuparse_shared)
+     list(APPEND BUILT_TARGETS obuparse_shared)
+ endif()
+ 
+-# Install the library targets that were built, and the tool
+-install(TARGETS ${BUILT_TARGETS} obudump
++# Install the library targets that were built, and the tool if requested.
++set(INSTALL_TARGETS ${BUILT_TARGETS})
++if(TARGET obudump)
++    list(APPEND INSTALL_TARGETS obudump)
++endif()
++
++install(TARGETS ${INSTALL_TARGETS}
+     EXPORT OBUParseTargets
+     ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+     LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"

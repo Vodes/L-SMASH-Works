@@ -1,0 +1,47 @@
+[build-system]
+requires = ["meson-python>=0.18.0"]
+build-backend = "mesonpy"
+
+[project]
+name = "vapoursynth-lsmas"
+description = "L-SMASH-Works source filters for VapourSynth"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "GPL-3.0-or-later" }
+authors = [{ name = "L-SMASH-Works contributors" }]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Plugins",
+    "Natural Language :: English",
+    "Operating System :: MacOS",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX",
+    "Operating System :: Unix",
+    "Programming Language :: C",
+    "Topic :: Multimedia :: Video",
+]
+dependencies = [
+    "VapourSynth>=74",
+]
+dynamic = ["version"]
+
+[project.urls]
+Repository = "https://github.com/VFR-maniac/L-SMASH-Works"
+Issues = "https://github.com/VFR-maniac/L-SMASH-Works/issues"
+
+[tool.meson-python.wheel]
+exclude = ["*.a", "*.lib"]
+
+[tool.cibuildwheel]
+build = "cp312-*"
+skip = ["*-win32", "*-manylinux_i686", "*-musllinux_i686"]
+
+[tool.cibuildwheel.linux]
+manylinux-x86_64-image = "manylinux_2_28"
+manylinux-aarch64-image = "manylinux_2_28"
+musllinux-x86_64-image = "musllinux_1_2"
+musllinux-aarch64-image = "musllinux_1_2"
+repair-wheel-command = 'auditwheel repair -w {dest_dir} {wheel} && for w in {dest_dir}/*.whl; do pipx run wheel tags --remove --python-tag py3 --abi-tag none "$w"; done'
+
+[tool.cibuildwheel.macos]
+repair-wheel-command = 'delocate-wheel --require-archs {delocate_archs} -w {dest_dir} -v {wheel} && for w in {dest_dir}/*.whl; do pipx run wheel tags --remove --python-tag py3 --abi-tag none "$w"; done'

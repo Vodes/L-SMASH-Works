@@ -12,3 +12,6 @@
 	path = l-smash
 	url = https://github.com/HomeOfAviSynthPlusEvolution/l-smash
 	branch = merged_changes
+[submodule "vapoursynth-include"]
+	path = vapoursynth-include
+	url = https://github.com/vapoursynth/vapoursynth.git

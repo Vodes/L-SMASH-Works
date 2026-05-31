@@ -6,6 +6,13 @@ option(
 )
 
 option(
+  'dependency_root',
+  type: 'string',
+  value: '',
+  description: 'Prefix containing liblsmash and FFmpeg headers and libraries'
+)
+
+option(
   'vapoursynth_include',
   type: 'string',
   value: '',
