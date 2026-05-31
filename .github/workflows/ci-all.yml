@@ -52,6 +52,7 @@ jobs:
       contents: write
     outputs:
       has_release_token: ${{ steps.token-check.outputs.present }}
+      should_publish: ${{ steps.publish-policy.outputs.publish }}
 
     steps:
       - name: Check release token
@@ -76,14 +77,28 @@ jobs:
         if: steps.token-check.outputs.present == 'true'
         id: version
         run: |
-          WHEEL=$(ls dist/*.whl | head -1)
-          VERSION=$(basename "$WHEEL" | sed 's/^[^-]*-\([^-]*\)-.*/\1/')
+          VERSION=$(python3 VapourSynth/ci/version.py)
           TAG="vapoursynth-lsmas-v$VERSION"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
 
-      - name: Upload to GitHub Release
+      - name: Decide publish policy
         if: steps.token-check.outputs.present == 'true'
+        id: publish-policy
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          case "$VERSION" in
+            *.dev*)
+              echo "publish=false" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "publish=true" >> "$GITHUB_OUTPUT"
+              ;;
+          esac
+
+      - name: Upload to GitHub Release
+        if: steps.publish-policy.outputs.publish == 'true'
         uses: softprops/action-gh-release@v3
         with:
           repository: Jaded-Encoding-Thaumaturgy/vs-wheels
@@ -98,7 +113,7 @@ jobs:
   trigger-index:
     name: Trigger vs-wheels index
     needs: publish
-    if: needs.publish.outputs.has_release_token == 'true'
+    if: needs.publish.outputs.should_publish == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: write

@@ -11,36 +11,45 @@ from pathlib import Path
 DESCRIBE_RE = re.compile(
     r"^(?P<tag>.+)-(?P<distance>\d+)-g(?P<sha>[0-9a-f]+)(?P<dirty>-dirty)?$"
 )
+TAG_RE = re.compile(
+    r"^(?P<release>\d+(?:\.\d+){0,3})(?:(?:\.|-)?(?P<phase>a|b|rc|dev|post)(?P<phase_num>\d+))?$"
+)
 
 
 def normalize_tag(tag: str) -> str | None:
     if tag.startswith("v"):
         tag = tag[1:]
 
-    if re.fullmatch(r"\d+\.\d+\.\d+\.\d+", tag):
-        parts = tag.split(".")
-        if parts[3] == "0":
-            return ".".join(parts[:3])
-        return tag
-
-    if re.fullmatch(r"\d+\.\d+\.\d+", tag):
-        return tag
-
-    if re.fullmatch(r"\d+", tag):
-        if len(tag) == 8 and tag.startswith(("19", "20")):
+    match = TAG_RE.fullmatch(tag)
+    if match is None:
+        if re.fullmatch(r"\d{8}", tag) and tag.startswith(("19", "20")):
             return None
-        return f"{int(tag)}.0.0"
+        if re.fullmatch(r"\d+", tag):
+            return f"{int(tag)}.0.0"
+        return None
 
-    return None
+    parts = match.group("release").split(".")
+    if len(parts) == 4 and parts[3] == "0":
+        parts = parts[:3]
+    elif len(parts) == 1:
+        parts.extend(["0", "0"])
+
+    version = ".".join(parts)
+    phase = match.group("phase")
+    phase_num = match.group("phase_num")
+    if phase is None:
+        return version
+    if phase == "dev":
+        return f"{version}.dev{phase_num}"
+    return f"{version}{phase}{phase_num}"
 
 
-def pep440_version(repo_root: Path) -> str:
-    describe_out = subprocess.run(
-        ["git", "-C", str(repo_root), "describe", "--tags", "--long", "--dirty", "--always"],
-        check=True,
-        capture_output=True,
-        text=True,
-    ).stdout.strip()
+def version_from_describe(describe_out: str) -> str:
+    def local_suffix(sha: str, dirty: bool) -> str:
+        suffix = f"+g{sha}"
+        if dirty:
+            suffix += ".dirty"
+        return suffix
 
     match = DESCRIBE_RE.fullmatch(describe_out)
     if not match:
@@ -54,14 +63,27 @@ def pep440_version(repo_root: Path) -> str:
 
     base = normalize_tag(tag)
     if base is None:
-        return f"0.0.0.dev{distance}+g{sha}"
+        return f"0.0.0.dev{distance}{local_suffix(sha, dirty)}"
 
     version = base
     if distance:
-        version += f".dev{distance}+g{sha}"
+        if re.search(r"\.dev\d+$", base):
+            version += local_suffix(sha, dirty)
+        else:
+            version += f".dev{distance}{local_suffix(sha, dirty)}"
     elif dirty:
-        version += f"+g{sha}.dirty"
+        version += local_suffix(sha, dirty)
     return version
+
+
+def pep440_version(repo_root: Path) -> str:
+    describe_out = subprocess.run(
+        ["git", "-C", str(repo_root), "describe", "--tags", "--long", "--dirty", "--always"],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    return version_from_describe(describe_out)
 
 
 def parse_args() -> argparse.Namespace:

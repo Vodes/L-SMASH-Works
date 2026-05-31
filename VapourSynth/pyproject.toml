@@ -1,5 +1,5 @@
 [build-system]
-requires = ["meson-python>=0.18.0"]
+requires = ["meson-python>=0.18.0", "cmake", "ninja"]
 build-backend = "mesonpy"
 
 [project]
@@ -26,8 +26,8 @@ dependencies = [
 dynamic = ["version"]
 
 [project.urls]
-Repository = "https://github.com/VFR-maniac/L-SMASH-Works"
-Issues = "https://github.com/VFR-maniac/L-SMASH-Works/issues"
+Repository = "https://github.com/Vodes/L-SMASH-Works"
+Issues = "https://github.com/Vodes/L-SMASH-Works/issues"
 
 [tool.meson-python.wheel]
 exclude = ["*.a", "*.lib"]
