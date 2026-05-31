@@ -1,0 +1,59 @@
+name: Build Linux Wheel
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: manylinux-x86_64
+            runs-on: ubuntu-latest
+            build: cp312-manylinux_x86_64
+            before-all: cd /project/VapourSynth && sh ci/build-deps.sh /usr/local
+            environment: LD_LIBRARY_PATH=/usr/local/lib:/usr/local/lib64 PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:/usr/local/lib64/pkgconfig CMAKE_PREFIX_PATH=/usr/local
+          - name: musllinux-x86_64
+            runs-on: ubuntu-latest
+            build: cp312-musllinux_x86_64
+            before-all: cd /project/VapourSynth && sh ci/build-deps.sh /usr/local
+            environment: LD_LIBRARY_PATH=/usr/local/lib:/usr/local/lib64 PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:/usr/local/lib64/pkgconfig CMAKE_PREFIX_PATH=/usr/local
+          - name: manylinux-aarch64
+            runs-on: ubuntu-24.04-arm
+            build: cp312-manylinux_aarch64
+            before-all: cd /project/VapourSynth && sh ci/build-deps.sh /usr/local
+            environment: LD_LIBRARY_PATH=/usr/local/lib:/usr/local/lib64 PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:/usr/local/lib64/pkgconfig CMAKE_PREFIX_PATH=/usr/local
+          - name: musllinux-aarch64
+            runs-on: ubuntu-24.04-arm
+            build: cp312-musllinux_aarch64
+            before-all: cd /project/VapourSynth && sh ci/build-deps.sh /usr/local
+            environment: LD_LIBRARY_PATH=/usr/local/lib:/usr/local/lib64 PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:/usr/local/lib64/pkgconfig CMAKE_PREFIX_PATH=/usr/local
+
+    name: Build wheel ${{ matrix.name }}
+    runs-on: ${{ matrix.runs-on }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - name: Build wheels
+        uses: pypa/cibuildwheel@v3.4.0
+        with:
+          package-dir: VapourSynth
+          output-dir: wheelhouse
+          extras: uv
+        env:
+          CIBW_BUILD: ${{ matrix.build }}
+          CIBW_BUILD_FRONTEND: uv
+          CIBW_BEFORE_ALL: ${{ matrix.before-all }}
+          CIBW_ENVIRONMENT: ${{ matrix.environment }}
+
+      - name: Upload wheel
+        uses: actions/upload-artifact@v7
+        with:
+          name: wheel-${{ matrix.name }}
+          path: wheelhouse/*.whl

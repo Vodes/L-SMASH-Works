@@ -1,0 +1,34 @@
+name: Build macOS Wheel
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build wheel macOS arm64
+    runs-on: macos-15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - name: Build wheels
+        uses: pypa/cibuildwheel@v3.4.0
+        with:
+          package-dir: VapourSynth
+          output-dir: wheelhouse
+          extras: uv
+        env:
+          CIBW_BUILD: cp312-macosx_arm64
+          CIBW_BUILD_FRONTEND: uv
+          CIBW_BEFORE_ALL: brew install nasm && cd "$GITHUB_WORKSPACE/VapourSynth" && sh ci/build-deps.sh "$(brew --prefix)"
+          CIBW_ENVIRONMENT: MACOSX_DEPLOYMENT_TARGET=15.0 DYLD_FALLBACK_LIBRARY_PATH=/opt/homebrew/lib PKG_CONFIG_PATH=/opt/homebrew/lib/pkgconfig CMAKE_PREFIX_PATH=/opt/homebrew
+
+      - name: Upload wheel
+        uses: actions/upload-artifact@v7
+        with:
+          name: wheel-macos-arm64
+          path: wheelhouse/*.whl

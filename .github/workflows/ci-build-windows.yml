@@ -1,0 +1,27 @@
+name: Build Windows Wheel
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build wheel Windows x64
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - name: Build cross wheel in Docker
+        run: |
+          cd VapourSynth
+          CONTAINER_TOOL=docker bash ci/run-windows-cross-docker.sh
+
+      - name: Upload wheel
+        uses: actions/upload-artifact@v7
+        with:
+          name: wheel-windows-amd64
+          path: VapourSynth/dist/*.whl
