@@ -118,3 +118,4 @@ CPackConfig.cmake
 CPackSourceConfig.cmake
 build/
 libxxhash.pc
+/build_vs_test

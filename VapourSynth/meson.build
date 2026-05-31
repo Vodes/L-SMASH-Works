@@ -1,6 +1,6 @@
 project('L-SMASH-Works', 'c',
   default_options: ['buildtype=release', 'b_ndebug=if-release', 'c_std=c99'],
-  meson_version: '>=0.48.0'
+  meson_version: '>=0.64.0'
 )
 
 version_h = declare_dependency(
@@ -11,7 +11,12 @@ version_h = declare_dependency(
     )
 )
 
-add_project_arguments('-DXXH_INLINE_ALL', '-D_FILE_OFFSET_BITS=64', '-DDEFAULT_CACHEDIR=' + get_option('cachedir'), language: 'c')
+add_project_arguments(
+  '-DXXH_INLINE_ALL',
+  '-D_FILE_OFFSET_BITS=64',
+  '-DDEFAULT_CACHEDIR=' + get_option('cachedir'),
+  language: 'c'
+)
 
 sources = [
   'libavsmash_source.c',
@@ -47,15 +52,31 @@ sources = [
   '../common/video_output.h'
 ]
 
-vapoursynth_dep = dependency('vapoursynth').partial_dependency(compile_args: true, includes: true)
+py = import('python').find_installation(pure: false)
+fs = import('fs')
+
+vsinclude = get_option('vapoursynth_include')
+if vsinclude == ''
+  # prefer a local vapoursynth submodule
+  vsinclude = 'vapoursynth/include'
+endif
+
+if not fs.is_dir(vsinclude)
+  if get_option('vapoursynth_include') != ''
+    error('vapoursynth_include does not exist: ' + vsinclude)
+  endif
+  # fallback to the installed python package
+  vsinclude = run_command(py, '-c', 'import vapoursynth as vs; print(vs.get_include())', check: true).stdout().strip()
+endif
 
 deps = [
-  vapoursynth_dep,
   dependency('liblsmash'),
   dependency('libavcodec', version: '>=58.91.0'),
   dependency('libavformat', version: '>=58.45.0'),
+  dependency('libswresample'),
   dependency('libavutil', version: '>=56.51.0'),
   dependency('libswscale', version: '>=5.7.0'),
+  dependency('zlib'),
   version_h
 ]
 
@@ -76,8 +97,10 @@ else
 endif
 
 shared_module('vslsmashsource', sources,
+  include_directories: include_directories(vsinclude, '../xxHash'),
   dependencies: deps,
   install: true,
-  install_dir: join_paths(vapoursynth_dep.get_pkgconfig_variable('libdir'), 'vapoursynth'),
+  install_dir: py.get_install_dir() / 'vapoursynth/plugins',
+  name_prefix: '',
   gnu_symbol_visibility: 'hidden'
 )
