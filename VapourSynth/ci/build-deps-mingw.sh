@@ -25,11 +25,13 @@ done
 rm -rf "${build_root}" "${prefix}"
 mkdir -p "${build_root}" "${prefix}"
 
-if ! grep -q 'option(BUILD_TOOLS "Build the obuparse tools" ON)' "${repo_root}/../obuparse/CMakeLists.txt"; then
-  git -C "${repo_root}/../obuparse" apply "${repo_root}/ci/patches/obuparse-build-tools.patch"
+obuparse_source="${build_root}/obuparse-src"
+cp -a "${repo_root}/../obuparse" "${obuparse_source}"
+if ! grep -q 'option(BUILD_TOOLS "Build the obuparse tools" ON)' "${obuparse_source}/CMakeLists.txt"; then
+  git -C "${obuparse_source}" apply "${repo_root}/ci/patches/obuparse-build-tools.patch"
 fi
 
-cmake -S "${repo_root}/../obuparse" -B "${build_root}/obuparse" -G Ninja \
+cmake -S "${obuparse_source}" -B "${build_root}/obuparse" -G Ninja \
   -DCMAKE_TOOLCHAIN_FILE="${toolchain_file}" \
   -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_INSTALL_PREFIX="${prefix}" \
