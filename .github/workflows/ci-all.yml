@@ -2,12 +2,8 @@ name: CI All
 
 on:
   push:
-    branches:
-      - master
-      - main
     tags:
       - "*"
-  pull_request:
   workflow_dispatch:
 
 jobs:
@@ -23,12 +19,23 @@ jobs:
   build-sdist:
     name: Build sdist
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
         with:
           submodules: recursive
+
+      - name: Determine version
+        id: version
+        run: |
+          VERSION=$(python3 VapourSynth/ci/version.py)
+          TAG="vapoursynth-lsmas-v$VERSION"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
 
       - name: Build sdist
         run: python3 VapourSynth/ci/build-sdist.py --out-dir dist
@@ -76,9 +83,10 @@ jobs:
       - name: Determine version
         if: steps.token-check.outputs.present == 'true'
         id: version
+        env:
+          VERSION: ${{ needs.build-sdist.outputs.version }}
+          TAG: ${{ needs.build-sdist.outputs.tag }}
         run: |
-          VERSION=$(python3 VapourSynth/ci/version.py)
-          TAG="vapoursynth-lsmas-v$VERSION"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
 
@@ -86,7 +94,7 @@ jobs:
         if: steps.token-check.outputs.present == 'true'
         id: publish-policy
         env:
-          VERSION: ${{ steps.version.outputs.version }}
+          VERSION: ${{ needs.build-sdist.outputs.version }}
         run: |
           case "$VERSION" in
             *.dev*)
@@ -104,9 +112,9 @@ jobs:
           repository: Jaded-Encoding-Thaumaturgy/vs-wheels
           token: ${{ secrets.VS_WHEELS_RELEASE_TOKEN }}
           tag_name: ${{ steps.version.outputs.tag }}
-          name: vapoursynth-lsmas ${{ steps.version.outputs.version }}
+          name: vapoursynth-lsmas ${{ needs.build-sdist.outputs.version }}
           files: dist/*
-          body: vapoursynth-lsmas ${{ steps.version.outputs.version }}
+          body: vapoursynth-lsmas ${{ needs.build-sdist.outputs.version }}
           fail_on_unmatched_files: true
           generate_release_notes: false
 
