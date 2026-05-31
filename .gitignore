@@ -122,3 +122,4 @@ libxxhash.pc
 dist/
 /VapourSynth/.cross-build-*
 /VapourSynth/.pkg-prefix-*
+/VapourSynth/ci/__pycache__
