@@ -12,7 +12,6 @@ case "${prefix_input}" in
 esac
 build_root="${repo_root}/.cibw-build"
 cleanup_prefix=1
-windows_static=0
 
 case "${prefix}" in
   /usr|/usr/*|/usr/local|/usr/local/*|/opt/homebrew|/opt/homebrew/*)
@@ -22,7 +21,8 @@ esac
 
 case "$(uname -s)" in
   MINGW*|MSYS*|CYGWIN*)
-    windows_static=1
+    echo "ci/build-deps.sh is for Linux/macOS. Use ci/build-deps-mingw.sh for Windows cross-builds." >&2
+    exit 1
     ;;
 esac
 
@@ -46,8 +46,8 @@ cmake -S "${repo_root}/../obuparse" -B "${build_root}/obuparse" -G Ninja \
   -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_INSTALL_PREFIX="${prefix}" \
   -DCMAKE_INSTALL_LIBDIR=lib \
-  -DBUILD_SHARED_LIBS=$( [ "${windows_static}" -eq 1 ] && echo OFF || echo ON ) \
-  -DBUILD_STATIC_LIBS=$( [ "${windows_static}" -eq 1 ] && echo ON || echo OFF ) \
+  -DBUILD_SHARED_LIBS=ON \
+  -DBUILD_STATIC_LIBS=OFF \
   -DBUILD_TOOLS:BOOL=OFF
 cmake --build "${build_root}/obuparse" -j "${jobs}"
 cmake --install "${build_root}/obuparse"
@@ -57,8 +57,8 @@ cmake -S "${repo_root}/../l-smash" -B "${build_root}/l-smash" -G Ninja \
   -DCMAKE_INSTALL_PREFIX="${prefix}" \
   -DCMAKE_INSTALL_LIBDIR=lib \
   -DCMAKE_PREFIX_PATH="${prefix}" \
-  -DBUILD_SHARED_LIBS=$( [ "${windows_static}" -eq 1 ] && echo OFF || echo ON ) \
-  -DBUILD_STATIC_LIBS=$( [ "${windows_static}" -eq 1 ] && echo ON || echo OFF ) \
+  -DBUILD_SHARED_LIBS=ON \
+  -DBUILD_STATIC_LIBS=OFF \
   -DLSMASH_BUILD_TOOLS=OFF
 cmake --build "${build_root}/l-smash" -j "${jobs}"
 cmake --install "${build_root}/l-smash"
@@ -81,28 +81,11 @@ cmake --install "${build_root}/l-smash"
     --disable-muxers
     --enable-pic
     --disable-debug
-  "
-  if [ "${windows_static}" -eq 1 ]; then
-    ffmpeg_args="${ffmpeg_args}
-    --enable-static
-    --disable-shared
-    --pkg-config-flags=--static
-    "
-  else
-    ffmpeg_args="${ffmpeg_args}
     --disable-static
     --enable-shared
-    "
-  fi
+  "
   # shellcheck disable=SC2086
   ./configure ${ffmpeg_args}
   make -j "${jobs}"
   make install -j "${jobs}"
 )
-
-if [ "${windows_static}" -eq 1 ]; then
-  for pc in "${prefix}"/lib/pkgconfig/libav*.pc; do
-    [ -f "${pc}" ] || continue
-    sed -i 's/[[:space:]]-latomic//g' "${pc}"
-  done
-fi
