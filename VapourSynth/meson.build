@@ -13,6 +13,12 @@ version_h = declare_dependency(
         output: 'version.h'
     )
 )
+obuparse_keep_prefix = []
+obuparse_keep_suffix = []
+if host_machine.system() == 'linux'
+  obuparse_keep_prefix = [declare_dependency(link_args: ['-Wl,--no-as-needed'])]
+  obuparse_keep_suffix = [declare_dependency(link_args: ['-Wl,--as-needed'])]
+endif
 
 add_project_arguments(
   '-DXXH_INLINE_ALL',
@@ -105,9 +111,10 @@ if dep_root != ''
       version_h
     ]
     if obuparse_dep.found()
-      deps = [obuparse_dep] + deps
+      deps = obuparse_keep_prefix + [obuparse_dep] + obuparse_keep_suffix + deps
     endif
   else
+    obuparse_dep = cc.find_library('obuparse', dirs: dep_lib, required: false)
     deps = [
       cc.find_library('lsmash', dirs: dep_lib, required: true),
       cc.find_library('avcodec', dirs: dep_lib, required: true),
@@ -118,6 +125,9 @@ if dep_root != ''
       dependency('zlib'),
       version_h
     ]
+    if obuparse_dep.found()
+      deps = obuparse_keep_prefix + [obuparse_dep] + obuparse_keep_suffix + deps
+    endif
   endif
 else
   lsmash_dep = dependency('liblsmash', required: false)
@@ -138,7 +148,7 @@ else
     version_h
   ]
   if obuparse_dep.found()
-    deps = [obuparse_dep] + deps
+    deps = obuparse_keep_prefix + [obuparse_dep] + obuparse_keep_suffix + deps
   endif
 endif
 
