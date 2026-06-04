@@ -1,10 +1,21 @@
-#### File
+# vapoursynth-lsmas
 
-    LSMASHSource.dll    : A source plugin for VapourSynth
+The vapoursynth plugin currently exposes:
 
-##### Functions
+- `core.lsmas.LibavSMASHSource`
+- `core.lsmas.LWLibavSource`
 
-###### lsmas.LibavSMASHSource
+It is built against the bundled `FFmpeg` fork in the repository root, plus the `l-smash`, `obuparse`, `xxHash`, and `vapoursynth-include` submodules.
+
+## Notes
+
+- The plugin is API4-only.
+- Alpha is exposed as the `_Alpha` frame property on the main output clip.
+- Local wheel builds use the host Python tag. CI retags release wheels to `py3-none-*`.
+
+## Functions
+
+#### lsmas.LibavSMASHSource
 
 * `lsmas.LibavSMASHSource(string source, int track = 0, int threads = 0, int seek_mode = 0, int seek_threshold = 10,
                         int dr = 0, int fpsnum = 0, int fpsden = 1, int variable = 0, string format = "",
@@ -133,7 +144,7 @@
                 Set the decoder options in FFmpeg.
                 The format is `key=value` separated by " ". (e.g. "drc_scale=0 auto_convert=0").
 
-###### lsmas.LWLibavSource
+#### lsmas.LWLibavSource
 
 * `lsmas.LWLibavSource(string source, int stream_index = -1, int threads = 0, int cache = 1, string cachefile = source + ".lwi",
                         int seek_mode = 0, int seek_threshold = 10, int dr = 0, int fpsnum = 0, int fpsden = 1, int variable = 0,
@@ -200,3 +211,117 @@
                 This is done in the indexing step.
                 To avoid the indexing speed penalty set this to `0`.
                 Switching between `1` and `0` requires manual deletion of the index file.
+
+# Build (meson)
+
+This readme only covers the meson path since that got plenty of additions for the new pypi stuff.<br>
+The CMake path was largely unchanged besides adding the API4 header discovery.
+
+Headers are submodule-first but you can pass your own and if the submodule does not exist it will try the api4 way of discovery with trying to find vapoursynth in the currently active python installation if any.
+
+
+## Versioning
+
+Versioning is derived from `git describe` by [`ci/version.py`](./ci/version.py).
+
+Accepted release tag shapes are:
+
+- `1282`
+- `1282.0.0`
+- `1282.0.0.0`
+- `1282.0.0rc1`
+- `1282.0.0.dev1`
+
+The fourth numeric component is ignored when it is `0`, so `1282.0.0.0` becomes `1282.0.0`.
+Required a bit of questionable code in order to support existing tags and "convention" somewhat.
+
+## Linux/macOS host build
+
+L-Smash uses a custom ffmpeg build and generally wants its own vendored dependencies.<br>
+From what I can see stuff like the AUR simply ignored this so far.<br>
+You might be able to keep doing that but here's how its likely intended to be done:
+
+### Build the bundled dependencies first:
+
+*The /tmp folder is obviously just an example. Both the wheel and the regular build path will link against the dependencies in that path!*
+
+```bash
+# You will still need make, meson, nasm, pkg-config, ninja-build and whatever compiler suite for this.
+bash ci/build-deps.sh /tmp/lsmas-prefix
+```
+
+### Build wheel with uv:
+
+This uses [mesonpy](https://mesonbuild.com/meson-python/).
+
+```bash
+PKG_CONFIG_PATH=/tmp/lsmas-prefix/lib/pkgconfig \
+CMAKE_PREFIX_PATH=/tmp/lsmas-prefix \
+uv build --wheel --out-dir /tmp/lsmas-wheel
+```
+
+That produces a wheel under `/tmp/lsmas-wheel/`.<br>
+Leaving out `--out-dir` will just throw it into the usual dist folder.
+
+### Plain meson build (no wheel):
+
+```bash
+PKG_CONFIG_PATH=/tmp/lsmas-prefix/lib/pkgconfig \
+CMAKE_PREFIX_PATH=/tmp/lsmas-prefix \
+meson setup build
+meson compile -C build
+```
+
+## Windows cross-build from Linux
+
+The supported local path is the Docker wrapper:
+
+This does in theory support podman too but it's not tested.
+
+```bash
+bash ci/run-windows-cross-docker.sh
+```
+
+To force it to use docker in case you have both you can do `CONTAINER_TOOL=docker`.
+
+That produces:
+
+- A wheel in `dist/`
+- The full dll and build files/logs in `build-mingw/`
+
+The resulting wheel is assembled manually as `py3-none-win_amd64`.
+
+### Why docker
+
+Was easier to test stuff out for cross compiling locally.
+
+Did not want all those mingw dependencies on my host and you can easily just use a docker in CI too.
+
+### Why is there a patch for obuparse
+
+The obudump part of obuparse simply kept refusing to compile for windows and I just kinda gave up on that.<br>
+Seemed unnecessary anyhow.
+
+## sdist
+
+The source distribution is built by [`ci/build-sdist.py`](./ci/build-sdist.py). It archives the tracked repository contents, including recursive submodules:
+
+```bash
+python3 ci/build-sdist.py --out-dir dist
+```
+
+This produces a standard `.tar.gz` sdist.
+
+## CI targets
+
+The GitHub workflows currently build wheels for:
+
+- Linux `x86_64` and `aarch64`
+- musllinux `x86_64` and `aarch64`
+- macOS arm64
+- Windows x64
+
+The aggregate workflow is [`../.github/workflows/ci-all.yml`](../.github/workflows/ci-all.yml).
+
+The musl and the linux arm64 targets are pretty much untested as of writing this.
+The others work (and are likely the only ones to be used anyhow).
