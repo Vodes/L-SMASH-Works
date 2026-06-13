@@ -41,7 +41,7 @@ def normalize_tag(tag: str) -> str | None:
         return version
     if phase == "dev":
         return f"{version}.dev{phase_num}"
-    return f"{version}{phase}{phase_num}"
+    return f"{version}.{phase}{phase_num}"
 
 
 def version_from_describe(describe_out: str) -> str:
